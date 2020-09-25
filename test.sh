@@ -2,8 +2,6 @@
 
 set -euo pipefail
 
-set -x
-
 export SONARQUBE_URL=https://sonarcloud.io
 export SONARQUBE_TOKEN=${SONAR_TOKEN}
 
@@ -17,5 +15,30 @@ export SONAR_SCANNER_OPTS="-server"
 curl -LsSO ${SONARQUBE_URL}/static/cpp/build-wrapper-linux-x86.zip
 unzip build-wrapper-linux-x86.zip
 
-clang --version
-exit 1
+which clang
+ls /usr/bin/llvm*
+
+./build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir cfamily-compilation-database bash build.sh
+LLVM_PROFILE_FILE="common.profraw" ./common
+LLVM_PROFILE_FILE="main.profraw" ./main
+llvm-profdata-9 merge -o report.profdata -sparse *.profraw
+llvm-cov-9 show \
+  -instr-profile=report.profdata \
+  -object=./common \
+  -object=./main \
+  > report.txt
+cat report.txt
+
+git fetch --unshallow
+sonar-scanner \
+  -Dsonar.cfamily.cache.enabled=false \
+  -Dsonar.host.url=${SONARQUBE_URL} \
+  -Dsonar.login=${SONARQUBE_TOKEN} \
+  -Dsonar.organization=mpaladin \
+  -Dsonar.projectKey=mpaladin_coverage-test \
+  -Dsonar.sources=. \
+  -Dsonar.cfamily.build-wrapper-output=cfamily-compilation-database \
+  -Dsonar.cfamily.threads=$(nproc) \
+  -Dsonar.cfamily.llvm-cov.reportPath=report.txt \
+  -Dsonar.projectVersion=master \
+  -Dsonar.sourceEncoding=UTF-8

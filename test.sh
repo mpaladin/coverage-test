@@ -21,11 +21,13 @@ ls /usr/bin/llvm*
 ./build-wrapper-linux-x86/build-wrapper-linux-x86-64 --out-dir cfamily-compilation-database bash build.sh
 LLVM_PROFILE_FILE="common.profraw" ./common
 LLVM_PROFILE_FILE="main.profraw" ./main
+LLVM_PROFILE_FILE="main2.profraw" ./main2
 llvm-profdata-9 merge -o report.profdata -sparse *.profraw
 llvm-cov-9 show \
   -instr-profile=report.profdata \
   -object=./common \
   -object=./main \
+  -object=./main2 \
   > report.txt
 cat report.txt
 
